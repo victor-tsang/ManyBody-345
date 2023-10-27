@@ -45,7 +45,17 @@ Ref: https://en.wikipedia.org/wiki/Verlet_integration
 
 # Scales
 
-The masses are in 3:4:5, and located in relative positions 
+The masses are in ratio 3:4:5 in mass and separation,
+and located in relative positions 
+
+| particle | position | mass | 
+|----------|----------|------|
+| M1       | (1,3)    | 3    |
+| M2       | (-2,-1)  | 4    |
+| M3       | ( 1,-1)  | 5    |
+
+such that the centre of mass is (0,0).
+
 
 # Task 1: Study of convergence 
 
