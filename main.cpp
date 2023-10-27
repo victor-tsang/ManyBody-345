@@ -11,6 +11,8 @@
 
 #include<Aliz/AlizChrono.hpp>
 
+#include"Particle.hpp"
+
 // for estimating or comparing hardware performance
 void test001(double a, double b, double c, size_t array_length)
 {
@@ -219,6 +221,20 @@ void test003(size_t steps, const double dt, const double G)
   cm = centre_of_mass(m1,m2,m3);
   std::cout<<fmt::format("After {2} steps, with dt={3}, G={4}, the centre of mass = ({0},{1}).",cm.x, cm.y, steps, dt,G)<<std::endl;
 }
+
+namespace test_particle
+{
+  const Particle M1{{ 1, 3},{0,0},{0,0},3};
+  const Particle M2{{-2,-1},{0,0},{0,0},4};
+  const Particle M3{{ 1,-1},{0,0},{0,0},5};
+
+
+  void test001()
+  {
+    Particle m1{{1,3},{0,0},{0,0},3};
+
+  }
+}; // namespace test_particle
 
 int main(int argc,char **argv)
 {

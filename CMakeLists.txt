@@ -4,7 +4,11 @@ project(ManyBody-345)
 set(CMAKE_CXX_STANDARD 20)
 
 add_executable(${PROJECT_NAME}
-        main.cpp)
+        main.cpp
+        Vector.cpp
+        Vector.hpp
+        Particle.cpp
+        Particle.hpp)
 
 
 
