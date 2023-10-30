@@ -13,6 +13,10 @@
 
 #include"Particle.hpp"
 
+// Particle.cpp
+void test_particle_001();
+
+
 // for estimating or comparing hardware performance
 void test001(double a, double b, double c, size_t array_length)
 {
@@ -248,5 +252,8 @@ int main(int argc,char **argv)
   test003(10000000,1e-8,1.0);
   test003(10000000,1e-9,1.0);
   test003(10000000,1e-10,1.0);
+
+  test_particle_001();
+
   return 0;
 }
