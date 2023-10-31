@@ -63,3 +63,11 @@ Use several threads to run the integrations with different
 step size to see how they will converge when the step is 
 "sufficiently small".
 
+In Particle.cpp, test002(), which uses different dt to
+approach a given time, then compare the total energy of the 
+system, found that, the energy varies very much.
+
+## Side-track to Halley Comet
+Try to study a similar system, Halley comet, with the same Vector and
+Particle classes as the 3-4-5 system.
+

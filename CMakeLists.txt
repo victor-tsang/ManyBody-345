@@ -8,7 +8,9 @@ add_executable(${PROJECT_NAME}
         Vector.cpp
         Vector.hpp
         Particle.cpp
-        Particle.hpp)
+        Particle.hpp
+        HalleyComet.cpp
+        HalleyComet.hpp)
 
 
 

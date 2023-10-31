@@ -16,6 +16,11 @@
 // Particle.cpp
 void test_particle_001();
 
+// HalleyComet.cpp
+namespace halley_comet
+{
+  void test();
+};
 
 // for estimating or comparing hardware performance
 void test001(double a, double b, double c, size_t array_length)
@@ -244,16 +249,18 @@ int main(int argc,char **argv)
 {
   std::cout<<"Hello, world!"<<std::endl;
 
-  test001(3., 4., 5., 1000000);
-  test002();
-  test003(10000000,1e-5,1.0);
-  test003(10000000,1e-6,1.0);
-  test003(10000000,1e-7,1.0);
-  test003(10000000,1e-8,1.0);
-  test003(10000000,1e-9,1.0);
-  test003(10000000,1e-10,1.0);
+  //test001(3., 4., 5., 1000000);
+  //test002();
+  //test003(10000000,1e-5,1.0);
+  //test003(10000000,1e-6,1.0);
+  //test003(10000000,1e-7,1.0);
+  //test003(10000000,1e-8,1.0);
+  //test003(10000000,1e-9,1.0);
+  //test003(10000000,1e-10,1.0);
 
   test_particle_001();
+
+  //halley_comet::test();
 
   return 0;
 }
