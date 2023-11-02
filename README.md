@@ -68,6 +68,22 @@ approach a given time, then compare the total energy of the
 system, found that, the energy varies very much.
 
 ## Side-track to Halley Comet
-Try to study a similar system, Halley comet, with the same Vector and
+Try to study a simple system, Halley comet, with the same Vector and
 Particle classes as the 3-4-5 system.
 
+When monitoring the delta of r, v, and a during a dt time step, if the
+dt is too "coarse", the delta will be too large which may make the energy
+changes "too much", i.e. not conserve. The total energies of the system, for 
+the comet moves from the aphelion to the perihelion, are hugh different. 
+However, when the comet comes back from the perihelion to aphelion, the
+total energy restored to the value very similar to the starting value.
+
+## The velocity Verlet method and variable time steps
+It seems people studied the possibility of using variable time steps
+such that, when the delta r, v are too large, it can decrease the time step to minimize
+the error... 
+[The velocity Verlet method and variable time steps](https://scicomp.stackexchange.com/questions/34491/the-velocity-verlet-method-and-variable-time-steps)
+But the result seems not quite positive...
+
+## Compare the total energy during the steps
+Is the severe energy variance due to close "head-on" collision?

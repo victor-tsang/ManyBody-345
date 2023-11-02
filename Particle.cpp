@@ -25,6 +25,9 @@ namespace {
     Particle::value_type t_;
     Particle::value_type inverse_total_mass_;
     Particle::value_type total_pe_;
+    double variation_{0.05}; // +/- percentage.
+    size_t tolorance_break_{0};
+    double initial_total_energy_{0};
 
     void update_acceleration_()
     {
@@ -67,6 +70,31 @@ namespace {
       total_pe_=-G_*(m1_.mass*m2_.mass/r12.norm() + m1_.mass*m3_.mass/r13.norm() + m2_.mass*m3_.mass/r23.norm());
     }
 
+    int compare_(Particle const &prev, Particle const &current) noexcept
+    {
+      int ret;
+
+      ret=compare_(prev.r, current.r,"r");
+      ret+=compare_(prev.v, current.v,"v");
+      ret+=compare_(prev.a, current.a,"a");
+
+      if(ret)
+        ++tolorance_break_;
+
+      return ret;
+    }
+
+    int compare_(Vector2 const &prev, Vector2 const &current, const char *msg) const noexcept
+    {
+      auto diff=current - prev;
+      if((prev.x && abs(diff.x/prev.x)>variation_) || (prev.y && abs(diff.y/prev.y)>variation_))
+      {
+        std::cout<<"****** at t = "<<t_<<", "<<msg<<": "<<prev<<" -> "<<current<<" break the tolorance."<<std::endl;
+        return 1;
+      }
+      return 0;
+    }
+
   public:
     using value_type = Particle::value_type;
 
@@ -99,12 +127,25 @@ namespace {
       assert(m3_.v.y==0);
 
       update_acceleration_();
+
+      //initial_total_energy_=-G_*769./60.;
+      initial_total_energy_=total_energy();
     }
 
     virtual ~Runner()=default;
 
     void step()
     {
+      if(tolorance_break_ > 10)
+      {
+        t_ += dt_;
+        return;
+      }
+
+      auto const previous_m1=m1_;
+      auto const previous_m2=m2_;
+      auto const previous_m3=m3_;
+
       m1_.v += m1_.a*half_dt_;
       m2_.v += m2_.a*half_dt_;
       m3_.v += m3_.a*half_dt_;
@@ -120,6 +161,56 @@ namespace {
       m3_.v += m3_.a*half_dt_;
 
       t_ += dt_;
+      compare_(previous_m1,m1_);
+      compare_(previous_m2,m2_);
+      compare_(previous_m3,m3_);
+    }
+
+    void set_variation(double variation)
+    {
+      variation_ = variation;
+    }
+
+    int step_with_energy_check()
+    {
+      if(tolorance_break_ > 10)
+      {
+        t_ += dt_;
+        return 1;
+      }
+
+      m1_.v += m1_.a*half_dt_;
+      m2_.v += m2_.a*half_dt_;
+      m3_.v += m3_.a*half_dt_;
+
+      m1_.r += m1_.v*dt_;
+      m2_.r += m2_.v*dt_;
+      m3_.r += m3_.v*dt_;
+
+      update_acceleration_();
+
+      m1_.v += m1_.a*half_dt_;
+      m2_.v += m2_.a*half_dt_;
+      m3_.v += m3_.a*half_dt_;
+
+      t_ += dt_;
+
+      update_total_pe_();
+      auto energy = total_pe_ + m1_.ke() + m2_.ke() + m3_.ke();
+      if(variation_ < (abs((energy-initial_total_energy_)/initial_total_energy_)))
+      {
+        ++tolorance_break_;
+
+        std::cout<<"\t!!!!!!!! tolorance violation: at time "<<t_<<", energy = "<<energy<<", initial total energy = "<<initial_total_energy_<<std::endl;
+        Vector2 r12{m2_.r - m1_.r};
+        Vector2 r13{m3_.r - m1_.r};
+        Vector2 r23{m3_.r - m2_.r};
+        std::cout<<"\t!!!!!!!!  r_12 = "<<r12<<", r_13 = "<<r13<<", r_23 = "<<r23<<std::endl;
+
+        return -1;
+      }
+
+      return 0;
     }
 
     value_type time() const noexcept
@@ -160,7 +251,8 @@ namespace {
   {
     Particle a{{0,0},{0,0},{0,0},0};
 
-    Runner runner(1e-4,1.0);
+    //Runner runner(1e-4,1.0);
+    Runner runner(1e-4,1.0e-10);
 
     const size_t loops=1000000;
 
@@ -175,17 +267,19 @@ namespace {
     std::cout<<"test001:\n\ttime is "<< runner.time()<<std::endl;
     std::cout<<"\tcentre of mass = "<< runner.centre_of_mass()<<", total PE = "<<runner.total_pe()<<", total energy = "<<runner.total_energy()<<std::endl;
 
+    std::cout<<"\n\ntest001: done."<<std::endl;
   }
 
   void test002()
   {
     const double target_time=100;
-    const double G=1.0;
+    //const double G=1.0;
+    const double G=1.0e-10;
 
     std::cout<<"test002:"<<std::endl;
     size_t loops;
 
-    for(double dt:{1e-4, 1e-5, 1e-6, 1e-7})
+    for(double dt:{1e-6, 1e-7})
     //for(double dt:{1e-4, 1e-5, 1e-6, 1e-7, 1e-8})
     {
       Runner runner(dt,G);
@@ -205,16 +299,61 @@ namespace {
       std::cout<<"\ttime is "<< runner.time()<<", "<<loops<<" steps."<<std::endl;
       std::cout<<"\tcentre of mass = "<< runner.centre_of_mass()<<", total PE = "<<runner.total_pe()<<", total energy = "<<runner.total_energy()<<std::endl;
       runner.dump_masses(std::cout);
+      std::cout<<std::endl;
+      std::cout<<std::endl;
     }
 
     std::cout<<"test002: done."<<std::endl;
   }
 
+  void test003()
+  {
+    const double target_time=100;
+    const double G=1.0;
+    //const double G=1.0e-10;
+
+    std::cout<<"test003:"<<std::endl;
+    size_t loops;
+
+    for(double dt:{1e-6, 1e-7})
+    //for(double dt:{1e-4, 1e-5, 1e-6, 1e-7, 1e-8})
+    {
+      Runner runner(dt,G);
+
+      runner.set_variation(0.01); // 1%
+
+      std::cout<<"dt = "<<dt<<", estimated "<<(target_time/dt)<<" steps."<<std::endl;
+      std::cout<<"\ttime is "<< runner.time()<<std::endl;
+      std::cout<<"\tcentre of mass = "<< runner.centre_of_mass()<<", total PE = "<<runner.total_pe()<<", total energy = "<<runner.total_energy()<<std::endl;
+      //assert(runner.total_energy() == -G*769./60.);
+      std::cout<<"\ttotal energy = PE = -769/60, a.k.a. "<<(-G*769./60.)<<std::endl;
+      //runner.dump_masses(std::cout);
+
+      loops=0;
+      while(runner.time()<target_time)
+      {
+        if(runner.step_with_energy_check())
+        {
+          break;
+        }
+        ++loops;
+      }
+
+      std::cout<<"\ttime is "<< runner.time()<<", "<<loops<<" steps."<<std::endl;
+      std::cout<<"\tcentre of mass = "<< runner.centre_of_mass()<<", total PE = "<<runner.total_pe()<<", total energy = "<<runner.total_energy()<<std::endl;
+      runner.dump_masses(std::cout);
+      std::cout<<std::endl;
+      std::cout<<std::endl;
+    }
+
+    std::cout<<"test002: done."<<std::endl;
+  }
 
 }; // anonymous namespace
 
 void test_particle_001()
 {
-  test001();
-  test002();
+  //test001();
+  //test002();
+  test003();
 }
