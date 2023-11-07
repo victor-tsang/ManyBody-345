@@ -1,0 +1,22 @@
+
+
+9/17/02
+
+This fileset contains the integrator.f package, which
+evolves a system of n gravitating bodies forward in time using a
+Bulirsch-Stoer integrator.
+
+The file "input" contains the epoch 2000.0 ephemeris for the solar
+system (Sun + 9 planets). The input file also contains parameters which
+determine how the code will run. Output is in the form of data files
+for each planet which chart the orbital elements as a function of time.
+
+In order to run the code for n different than 9 bodies, one should change
+the parameter nb=9 to nb=whatever in the main routine, and also in
+the subroutines "derivs" and "Energysum". The code is currently opening
+up data files for 9 possible planets. For other n, delete or insert more
+"open" statements. It is also necessary to add or delete lines with the additional
+orbital elements for the additional planets in the "input" file.
+These extra lines would go in in exact analogy to the lines for 
+9 planets for which the code is currently configured.
+

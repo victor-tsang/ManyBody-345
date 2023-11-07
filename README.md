@@ -14,6 +14,22 @@ https://en.wikipedia.org/wiki/Three-body_problem
 Three masses in the ratio 3:4:5 are placed at rest at the vertices of
 a 3:4:5 right triangle.
 
+
+## Relevant works
+
+### AY 212: Dynamical Astronomy Project 2
+In [project two -- Burrau's problem of three bodies](https://www.ucolick.org/~laugh/oxide/projects/burrau.html)
+some discussion is presented. From its links, we can eventually find a page of a
+dynamical astronomy class [codes](https://www.ucolick.org/~laugh/oxide/codes/index.html) which
+calculates the Pythagorean three-body problem. The code is
+[fewbody.f](https://www.ucolick.org/~laugh/oxide/codes/fewbody.f.txt)
+instead of [integrator.f](https://www.ucolick.org/~laugh/oxide/codes/integrator.f.txt) as originally stated in the web page.
+
+The project employed [Bulirsch–Stoer algorithm](https://en.wikipedia.org/wiki/Bulirsch%E2%80%93Stoer_algorithm) to do the
+number crunching. This algorithm is also available in boost C++ library ([Boost.Numeric.Odeint](https://www.boost.org/doc/libs/1_83_0/libs/numeric/odeint/doc/html/index.html)):
+[boost/numeric/odeint/stepper/bulirsch_stoer.hpp](https://www.boost.org/doc/libs/1_83_0/boost/numeric/odeint/stepper/bulirsch_stoer.hpp)
+
+
 # Verlet integration
 
 Equation of motion for classical conservative system:
