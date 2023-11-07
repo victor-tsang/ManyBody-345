@@ -7,6 +7,8 @@
 
 #include<type_traits>
 #include<ostream>
+#include<numeric>
+#include<numbers>
 
 template<typename T>
 struct basic_vector2
@@ -98,5 +100,57 @@ std::ostream& operator<<(std::ostream &os, const basic_vector2<T> &value) noexce
   os<<'('<<value.x<<','<<value.y<<')';
   return os;
 }
+
+
+template<typename T>
+struct basic_polar2
+{
+  using value_type=T;
+
+  value_type r; // magnitude
+  value_type theta; // argument
+
+  basic_polar2(value_type const magnitude, value_type const argument):
+  r(magnitude), theta(argument)
+  {}
+
+  basic_polar2(basic_vector2<T> const &cartesian)
+  {
+    if(cartesian.x==0 && cartesian.y==0)
+    {
+      r=0;
+      theta=0;
+    }
+    else
+    {
+      r=cartesian.norm();
+      if(cartesian.x==0)
+      {
+        theta=0.5*std::numbers::pi;
+      }
+      else
+      {
+        theta=atan(cartesian.y/cartesian.x);
+      }
+
+      // which quadrant?
+      if(cartesian.x<0)
+      {
+        // Quadrant II and Quadrant III
+        theta += std::numbers::pi;
+      }
+      else
+      {
+        if(cartesian.y<0)
+        {
+          // Quadrant IV
+          theta += 2*std::numbers::pi;
+        }
+      }
+    }
+  }
+};
+
+using Polar2=basic_polar2<double>;
 
 #endif //MANYBODY_345_VECTOR_HPP

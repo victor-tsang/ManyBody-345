@@ -3,6 +3,8 @@
 //
 
 #include"Particle.hpp"
+#include"CollisionDetection.hpp"
+
 #include<iostream>
 #include<stdexcept>
 #include<cassert>
@@ -28,6 +30,7 @@ namespace {
     double variation_{0.05}; // +/- percentage.
     size_t tolorance_break_{0};
     double initial_total_energy_{0};
+    CollisionDetection::Collision collision_detector_;
 
     void update_acceleration_()
     {
@@ -99,7 +102,10 @@ namespace {
     using value_type = Particle::value_type;
 
     Runner(Particle::value_type dt, Particle::value_type G=1):
-    m1_(M1), m2_(M2), m3_(M3), G_(G), dt_(dt), half_dt_(0.5*dt),t_(0),inverse_total_mass_(1.0/(m1_.mass+m2_.mass+m3_.mass))
+    m1_(M1), m2_(M2), m3_(M3),
+    G_(G), dt_(dt), half_dt_(0.5*dt),t_(0),
+    inverse_total_mass_(1.0/(m1_.mass+m2_.mass+m3_.mass)),
+    collision_detector_(dt)
     {
       if(dt<0)
       {
@@ -212,6 +218,47 @@ namespace {
 
       return 0;
     }
+
+    int step_with_collision_check()
+    {
+      if(tolorance_break_ > 10)
+      {
+        t_ += dt_;
+        return 1;
+      }
+
+      m1_.v += m1_.a*half_dt_;
+      m2_.v += m2_.a*half_dt_;
+      m3_.v += m3_.a*half_dt_;
+
+      m1_.r += m1_.v*dt_;
+      m2_.r += m2_.v*dt_;
+      m3_.r += m3_.v*dt_;
+
+      update_acceleration_();
+
+      m1_.v += m1_.a*half_dt_;
+      m2_.v += m2_.a*half_dt_;
+      m3_.v += m3_.a*half_dt_;
+
+      t_ += dt_;
+
+      if(collision_detector_.collide(m1_,m2_)||collision_detector_.collide(m1_,m3_)||collision_detector_.collide(m2_,m3_))
+      {
+        ++tolorance_break_;
+
+        std::cout<<"\t!!!!!!!! possible collision: at time "<<t_<<std::endl;
+        Vector2 r12{m2_.r - m1_.r};
+        Vector2 r13{m3_.r - m1_.r};
+        Vector2 r23{m3_.r - m2_.r};
+        std::cout<<"\t!!!!!!!!  r_12 = "<<r12<<", r_13 = "<<r13<<", r_23 = "<<r23<<std::endl;
+
+        return -1;
+      }
+
+      return 0;
+    }
+
 
     value_type time() const noexcept
     {
@@ -346,7 +393,50 @@ namespace {
       std::cout<<std::endl;
     }
 
-    std::cout<<"test002: done."<<std::endl;
+    std::cout<<"test003: done."<<std::endl;
+  }
+
+  void test004()
+  {
+    const double target_time=100;
+    const double G=1.0;
+    //const double G=1.0e-10;
+
+    std::cout<<"test004:"<<std::endl;
+    size_t loops;
+
+    for(double dt:{1e-6, 1e-7})
+    //for(double dt:{1e-4, 1e-5, 1e-6, 1e-7, 1e-8})
+    {
+      Runner runner(dt,G);
+
+      runner.set_variation(0.01); // 1%
+
+      std::cout<<"dt = "<<dt<<", estimated "<<(target_time/dt)<<" steps."<<std::endl;
+      std::cout<<"\ttime is "<< runner.time()<<std::endl;
+      std::cout<<"\tcentre of mass = "<< runner.centre_of_mass()<<", total PE = "<<runner.total_pe()<<", total energy = "<<runner.total_energy()<<std::endl;
+      //assert(runner.total_energy() == -G*769./60.);
+      std::cout<<"\ttotal energy = PE = -769/60, a.k.a. "<<(-G*769./60.)<<std::endl;
+      //runner.dump_masses(std::cout);
+
+      loops=0;
+      while(runner.time()<target_time)
+      {
+        if(runner.step_with_collision_check())
+        {
+          break;
+        }
+        ++loops;
+      }
+
+      std::cout<<"\ttime is "<< runner.time()<<", "<<loops<<" steps."<<std::endl;
+      std::cout<<"\tcentre of mass = "<< runner.centre_of_mass()<<", total PE = "<<runner.total_pe()<<", total energy = "<<runner.total_energy()<<std::endl;
+      runner.dump_masses(std::cout);
+      std::cout<<std::endl;
+      std::cout<<std::endl;
+    }
+
+    std::cout<<"test004: done."<<std::endl;
   }
 
 }; // anonymous namespace
@@ -355,5 +445,6 @@ void test_particle_001()
 {
   //test001();
   //test002();
-  test003();
+  //test003();
+  test004();
 }

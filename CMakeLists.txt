@@ -10,7 +10,9 @@ add_executable(${PROJECT_NAME}
         Particle.cpp
         Particle.hpp
         HalleyComet.cpp
-        HalleyComet.hpp)
+        HalleyComet.hpp
+        CollisionDetection.cpp
+        CollisionDetection.hpp)
 
 
 
