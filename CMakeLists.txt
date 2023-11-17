@@ -76,6 +76,8 @@ target_link_libraries( ${PROJECT_NAME}
         fmt
         # PocoFoundation
         # "-framework Accelerate"
+        mpfr
+        gmp
         )
 
 # https://stackoverflow.com/questions/10046114/in-cmake-how-can-i-test-if-the-compiler-is-clang

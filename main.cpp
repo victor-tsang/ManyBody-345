@@ -258,9 +258,9 @@ int main(int argc,char **argv)
   //test003(10000000,1e-9,1.0);
   //test003(10000000,1e-10,1.0);
 
-  test_particle_001();
+  //test_particle_001();
 
-  //halley_comet::test();
+  halley_comet::test();
 
   return 0;
 }

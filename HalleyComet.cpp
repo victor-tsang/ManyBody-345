@@ -8,6 +8,25 @@
 
 #include<iostream>
 #include<functional>
+#include<array>
+
+#include<boost/numeric/odeint.hpp>
+#include<boost/multiprecision/cpp_dec_float.hpp>
+#include<boost/multiprecision/mpfr.hpp>
+//#include<boost/multiprecision/gmp.hpp>
+
+
+// https://stackoverflow.com/questions/58324974/why-does-odeint-fail-with-the-newer-versions-of-odeint
+//
+// The problem seems to be that boost::multiprecision::number,
+// what makes mpf_float_100 (and every other Boost.Multiprecision type) work,
+// has an associated value_type since Boost 1.68 and because of that Boost.Numeric.Odeint
+// treats it as a container when it is not.
+// The way that Odeint checks whether a type is a container is by
+// using a trait: has_value_type, specializing that trait for number should work:
+template< typename Backend, boost::multiprecision::expression_template_option Option >
+struct has_value_type<boost::multiprecision::number<Backend,Option> >:boost::mpl::false_{};
+
 
 namespace halley_comet
 {
@@ -254,24 +273,465 @@ namespace {
   void test003()
   {
     std::cout<<"halley_comet::(anonymous)::test003: "<<std::endl;
+    std::cout<<"Using Runge-Kutta const stepper."<<std::endl;
+
+    using value_type=double;
+    using time_type=value_type;
+    using state_type=std::array<value_type,4>; // [r_x, r_y, v_x, v_y]
+
+    // use metric units.
+    // https://nssdc.gsfc.nasa.gov/planetary/factsheet/sunfact.html
+    const value_type sun_mass = 1.9885e30; // kg
+    //const value_type G = 6.67428e-11;
+    //const value_type GM_sun = G * sun_mass;
+    const value_type GM_sun = 1.32712e20; // m^3/s^2
+
+    // Particle halley{{5.28e12,0,0},{0,9.13e2,0},{0,0,0},2.2e14};
+    state_type x={5.28e12,0,0,9.13e2};
+    auto halley_comet=[GM_sun](const state_type &x, state_type &dxdt, const time_type t){
+
+      if(t<0)
+      {
+        std::cout<<"****** t = "<<t<<"!!"<<std::endl;
+        throw std::runtime_error("time is negative.");
+      }
+      // the state variables: halley r, v
+      //
+      // r'' = -G M_sun M_halley r / (r^3)
+      //
+      // x    = [r_x, r_y, v_x, v_y]
+      // dxdt = [          v_x, v_y, a_x, a_y]
+      value_type r2=x[0]*x[0]+x[1]*x[1];
+      auto GM_r3=-GM_sun/(r2*sqrt(r2));
+
+      dxdt[0]=x[2];
+      dxdt[1]=x[3];
+      dxdt[2]=GM_r3*x[0];
+      dxdt[3]=GM_r3*x[1];
+    };
+    auto write_out = [] (const state_type &x, const time_type t)
+    {
+      std::cout<<t<<": "<<x[0]<<", "<<x[1]<<", "<<x[2]<<", "<<x[3]<<std::endl;
+    };
+    int x_direction = 0; // +ve = increasing, -ve = decreasing
+    int y_direction = 1;
+    value_type last_x=x[0], last_y=x[1];
+    auto check_turning = [&x_direction, &y_direction, &last_x, &last_y] (const state_type &x, const time_type t){
+      if(t==0)
+        return;
+
+      if(t<0)
+        return;
+
+      auto diff_x=x[0]-last_x;
+      auto diff_y=x[1]-last_y;
+      bool turning=false;
+
+      if(diff_x > 0 )
+      {
+        if(x_direction < 0)
+        {
+          turning=true;
+        }
+        x_direction=1;
+      }
+      else if(diff_x < 0)
+      {
+        if(x_direction > 0)
+        {
+          turning=true;
+        }
+        x_direction=-1;
+      }
+
+      if(diff_y > 0)
+      {
+        if(y_direction < 0)
+          turning=true;
+        y_direction=1;
+      }
+      else if(diff_y < 0)
+      {
+        if(y_direction > 0)
+          turning=true;
+
+        y_direction=-1;
+      }
+
+      if(turning)
+      {
+        std::cout<<"turning at "<<(t/(3600*24*365.25))<<" yr\t ("<<x[0]<<","<<x[1]<<")"<<std::endl;
+      }
+
+      last_x=x[0];
+      last_y=x[1];
+    };
+
+    using stepper_type = boost::numeric::odeint::runge_kutta4<state_type>;
+    time_type const time_from = 0;
+    time_type const time_to   = 85*365.25*24*3600;
+    time_type dt              = 3600.;
+    stepper_type stepper;
+
+    for(time_type delta:{3600*24, 3600, 60, 1})
+    {
+      x={5.28e12,0,0,9.13e2};
+      x_direction = 0; // +ve = increasing, -ve = decreasing
+      y_direction = 1;
+      last_x=x[0];
+      last_y=x[1];
+
+      std::cout<<"start at 0, the comet is at ("<<x[0]<<", "<<x[1]<<"); dt = "<<delta<<std::endl;
+      boost::numeric::odeint::integrate_const( stepper , halley_comet , x , time_from , time_to , delta , check_turning );
+      std::cout<<std::endl;
+    }
     std::cout<<"halley_comet::(anonymous)::test003: done."<<std::endl;
   }
 
   void test004()
   {
     std::cout<<"halley_comet::(anonymous)::test004: "<<std::endl;
+    std::cout<<"Using Runge-Kutta const stepper and boost.multiprecision time_type."<<std::endl;
+
+    // As of boost V1.83, (Nov 2023), it doesn't compile if the value_type is double but
+    // time_type is a boost::multiprecision::cpp_dec_float<>.
+    // I guess it should be the same type across state_type, deriv_type and time_type.
+    //using value_type=double;
+    //using value_type=boost::multiprecision::cpp_dec_float_50;
+    //using value_type=boost::multiprecision::number<boost::multiprecision::cpp_dec_float<25>>;
+    using value_type=boost::multiprecision::number<boost::multiprecision::mpfr_float_backend<25>>;
+
+    //using time_type=boost::multiprecision::number<boost::multiprecision::cpp_dec_float<100>>;
+    //using time_type=boost::multiprecision::cpp_dec_float_50;
+    using time_type=value_type;
+    using state_type=std::array<value_type,4>; // [r_x, r_y, v_x, v_y]
+
+    // use metric units.
+    // https://nssdc.gsfc.nasa.gov/planetary/factsheet/sunfact.html
+    const value_type sun_mass = 1.9885e30; // kg
+    //const value_type G = 6.67428e-11;
+    //const value_type GM_sun = G * sun_mass;
+    const value_type GM_sun = 1.32712e20; // m^3/s^2
+
+    // Particle halley{{5.28e12,0,0},{0,9.13e2,0},{0,0,0},2.2e14};
+    state_type x={5.28e12,0,0,9.13e2};
+    auto halley_comet=[GM_sun](const state_type &x, state_type &dxdt, const time_type t){
+
+      if(t<0)
+      {
+        std::cout<<"****** t = "<<t<<"!!"<<std::endl;
+        throw std::runtime_error("time is negative.");
+      }
+      // the state variables: halley r, v
+      //
+      // r'' = -G M_sun M_halley r / (r^3)
+      //
+      // x    = [r_x, r_y, v_x, v_y]
+      // dxdt = [          v_x, v_y, a_x, a_y]
+      value_type r2=x[0]*x[0]+x[1]*x[1];
+      auto GM_r3=-GM_sun/(r2*sqrt(r2));
+
+      dxdt[0]=x[2];
+      dxdt[1]=x[3];
+      dxdt[2]=GM_r3*x[0];
+      dxdt[3]=GM_r3*x[1];
+    };
+    auto write_out = [] (const state_type &x, const time_type t)
+    {
+      std::cout<<t<<": "<<x[0]<<", "<<x[1]<<", "<<x[2]<<", "<<x[3]<<std::endl;
+    };
+    int x_direction = 0; // +ve = increasing, -ve = decreasing
+    int y_direction = 1;
+    value_type last_x=x[0], last_y=x[1];
+    auto check_turning = [&x_direction, &y_direction, &last_x, &last_y] (const state_type &x, const time_type t){
+      if(t==0)
+        return;
+
+      if(t<0)
+        return;
+
+      auto diff_x=x[0]-last_x;
+      auto diff_y=x[1]-last_y;
+      bool turning=false;
+
+      if(diff_x > 0 )
+      {
+        if(x_direction < 0)
+        {
+          turning=true;
+        }
+        x_direction=1;
+      }
+      else if(diff_x < 0)
+      {
+        if(x_direction > 0)
+        {
+          turning=true;
+        }
+        x_direction=-1;
+      }
+
+      if(diff_y > 0)
+      {
+        if(y_direction < 0)
+          turning=true;
+        y_direction=1;
+      }
+      else if(diff_y < 0)
+      {
+        if(y_direction > 0)
+          turning=true;
+
+        y_direction=-1;
+      }
+
+      if(turning)
+      {
+        std::cout<<"turning at "<<(t/(3600*24*365.25))<<" yr\t ("<<x[0]<<","<<x[1]<<")"<<std::endl;
+      }
+
+      last_x=x[0];
+      last_y=x[1];
+    };
+
+    using stepper_type = boost::numeric::odeint::runge_kutta4<state_type,value_type,state_type,time_type>;
+    time_type const time_from = 0;
+    time_type const time_to   = 85*365.25*24*3600;
+    time_type dt              = 3600.;
+    stepper_type stepper;
+
+    for(time_type delta:{3600*24, 3600, 60, 1})
+    {
+      x={5.28e12,0,0,9.13e2};
+      x_direction = 0; // +ve = increasing, -ve = decreasing
+      y_direction = 1;
+      last_x=x[0];
+      last_y=x[1];
+
+      std::cout<<"start at 0, the comet is at ("<<x[0]<<", "<<x[1]<<"); dt = "<<delta<<std::endl;
+      boost::numeric::odeint::integrate_const( stepper , halley_comet , x , time_from , time_to , delta , check_turning );
+      std::cout<<std::endl;
+    }
+
     std::cout<<"halley_comet::(anonymous)::test004: done."<<std::endl;
  }
+
+
 
   void test005()
   {
     std::cout<<"halley_comet::(anonymous)::test005: "<<std::endl;
+    std::cout<<"Using Runge-Kutta const stepper and boost.multiprecision time_type."<<std::endl;
+
+    // As of boost V1.83, (Nov 2023), it doesn't compile if the value_type is double but
+    // time_type is a boost::multiprecision::cpp_dec_float<>.
+    // I guess it should be the same type across state_type, deriv_type and time_type.
+    //using value_type=double;
+    //using value_type=boost::multiprecision::cpp_dec_float_50;
+    //using value_type=boost::multiprecision::number<boost::multiprecision::cpp_dec_float<25>>;
+    using value_type=boost::multiprecision::number<boost::multiprecision::mpfr_float_backend<30>>;
+    using time_type=value_type;
+    using state_type=std::array<value_type,4>; // [r_x, r_y, v_x, v_y]
+
+
+    // use metric units.
+    // https://nssdc.gsfc.nasa.gov/planetary/factsheet/sunfact.html
+    const value_type sun_mass = 1.9885e30; // kg
+    //const value_type G = 6.67428e-11;
+    //const value_type GM_sun = G * sun_mass;
+    const value_type GM_sun = 1.32712e20; // m^3/s^2
+
+    // Particle halley{{5.28e12,0,0},{0,9.13e2,0},{0,0,0},2.2e14};
+    state_type x={5.28e12,0,0,9.13e2};
+    auto halley_comet=[GM_sun](const state_type &x, state_type &dxdt, const time_type t){
+
+      if(t<0)
+      {
+        std::cout<<"****** t = "<<t<<"!!"<<std::endl;
+        throw std::runtime_error("time is negative.");
+      }
+      // the state variables: halley r, v
+      //
+      // r'' = -G M_sun M_halley r / (r^3)
+      //
+      // x    = [r_x, r_y, v_x, v_y]
+      // dxdt = [          v_x, v_y, a_x, a_y]
+      value_type r2=x[0]*x[0]+x[1]*x[1];
+      auto GM_r3=-GM_sun/(r2*sqrt(r2));
+
+      dxdt[0]=x[2];
+      dxdt[1]=x[3];
+      dxdt[2]=GM_r3*x[0];
+      dxdt[3]=GM_r3*x[1];
+    };
+    auto write_out = [] (const state_type &x, const time_type t)
+    {
+      std::cout<<t<<": "<<x[0]<<", "<<x[1]<<", "<<x[2]<<", "<<x[3]<<std::endl;
+    };
+    int x_direction = 0; // +ve = increasing, -ve = decreasing
+    int y_direction = 1;
+    value_type last_x=x[0], last_y=x[1];
+    auto check_turning = [&x_direction, &y_direction, &last_x, &last_y] (const state_type &x, const time_type t){
+      if(t==0)
+        return;
+
+      if(t<0)
+        return;
+
+      auto diff_x=x[0]-last_x;
+      auto diff_y=x[1]-last_y;
+      bool turning=false;
+
+      if(diff_x > 0 )
+      {
+        if(x_direction < 0)
+        {
+          turning=true;
+        }
+        x_direction=1;
+      }
+      else if(diff_x < 0)
+      {
+        if(x_direction > 0)
+        {
+          turning=true;
+        }
+        x_direction=-1;
+      }
+
+      if(diff_y > 0)
+      {
+        if(y_direction < 0)
+          turning=true;
+        y_direction=1;
+      }
+      else if(diff_y < 0)
+      {
+        if(y_direction > 0)
+          turning=true;
+
+        y_direction=-1;
+      }
+
+      if(turning)
+      {
+        std::cout<<"turning at "<<(t/(3600*24*365.25))<<" yr\t ("<<x[0]<<","<<x[1]<<")"<<std::endl;
+      }
+
+      last_x=x[0];
+      last_y=x[1];
+    };
+
+    using error_stepper_type = boost::numeric::odeint::runge_kutta_cash_karp54< state_type, value_type, state_type, time_type >;
+    using controlled_stepper_type = boost::numeric::odeint::controlled_runge_kutta<error_stepper_type>;
+    time_type const time_from = 0;
+    time_type const time_to   = 85*365.25*24*3600;
+    time_type dt              = 3600.;
+
+    for(time_type delta:{3600*24, 3600, 60, 1})
+    {
+      x={5.28e12,0,0,9.13e2};
+      x_direction = 0; // +ve = increasing, -ve = decreasing
+      y_direction = 1;
+      last_x=x[0];
+      last_y=x[1];
+
+      std::cout<<"start at 0, the comet is at ("<<x[0]<<", "<<x[1]<<"); dt = "<<delta<<std::endl;
+      controlled_stepper_type controlled_stepper;
+      boost::numeric::odeint::integrate_adaptive( controlled_stepper, halley_comet , x , time_from , time_to , delta , check_turning );
+      std::cout<<std::endl;
+    }
+
+    for(time_type delta:{3600*24, 3600, 60, 1})
+    {
+      x={5.28e12,0,0,9.13e2};
+      x_direction = 0; // +ve = increasing, -ve = decreasing
+      y_direction = 1;
+      last_x=x[0];
+      last_y=x[1];
+
+      std::cout<<"start at 0, the comet is at ("<<x[0]<<", "<<x[1]<<"); dt = "<<delta<<std::endl;
+      //controlled_stepper_type controlled_stepper
+      value_type abs_err={1e-25};
+      value_type rel_err={1e-22};
+      boost::numeric::odeint::integrate_adaptive( boost::numeric::odeint::make_controlled(abs_err,rel_err,error_stepper_type()), halley_comet , x , time_from , time_to , delta , check_turning );
+      std::cout<<std::endl;
+    }
     std::cout<<"halley_comet::(anonymous)::test005: done."<<std::endl;
   }
+
+  void test006()
+  {
+    std::cout<<"halley_comet::(anonymous)::test006: "<<std::endl;
+    std::cout<<"halley_comet::(anonymous)::test006: done."<<std::endl;
+  }
+
+  void test007()
+  {
+    std::cout<<"halley_comet::(anonymous)::test007: "<<std::endl;
+    std::cout<<"halley_comet::(anonymous)::test007: done."<<std::endl;
+  }
+
+  void test008()
+  {
+    std::cout<<"halley_comet::(anonymous)::test008: "<<std::endl;
+    std::cout<<"halley_comet::(anonymous)::test008: done."<<std::endl;
+  }
+
+  void test009()
+  {
+    std::cout<<"halley_comet::(anonymous)::test009: "<<std::endl;
+    std::cout<<"halley_comet::(anonymous)::test009: done."<<std::endl;
+  }
+
+  void test010()
+  {
+    std::cout<<"halley_comet::(anonymous)::test010: "<<std::endl;
+    std::cout<<"halley_comet::(anonymous)::test010: done."<<std::endl;
+  }
+
 }; // anonymous namespace
 
 void halley_comet::test()
 {
-  test001();
-  test002();
+  //test001();
+  //test002();
+  try
+  {
+    //test003();
+  }
+  catch(std::exception &ex)
+  {
+    std::cout<<"****** Exception: "<<ex.what()<<std::endl;
+  }
+  catch(...)
+  {
+    std::cout<<"****** Exception!"<<std::endl;
+  }
+
+  try
+  {
+    //test004();
+  }
+  catch(std::exception &ex)
+  {
+    std::cout<<"****** Exception: "<<ex.what()<<std::endl;
+  }
+  catch(...)
+  {
+    std::cout<<"****** Exception!"<<std::endl;
+  }
+
+  try
+  {
+    test005();
+  }
+  catch(std::exception &ex)
+  {
+    std::cout<<"****** Exception: "<<ex.what()<<std::endl;
+  }
+  catch(...)
+  {
+    std::cout<<"****** Exception!"<<std::endl;
+  }
 }

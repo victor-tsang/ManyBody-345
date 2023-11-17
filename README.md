@@ -29,6 +29,8 @@ The project employed [Bulirsch–Stoer algorithm](https://en.wikipedia.org/wiki/
 number crunching. This algorithm is also available in boost C++ library ([Boost.Numeric.Odeint](https://www.boost.org/doc/libs/1_83_0/libs/numeric/odeint/doc/html/index.html)):
 [boost/numeric/odeint/stepper/bulirsch_stoer.hpp](https://www.boost.org/doc/libs/1_83_0/boost/numeric/odeint/stepper/bulirsch_stoer.hpp)
 
+See also [What the difference is between Størmer Verlet and regular Verlet method?](https://physics.stackexchange.com/questions/447056/what-the-difference-is-between-st%C3%B8rmer-verlet-and-regular-verlet-method)
+
 
 # Verlet integration
 
@@ -103,3 +105,8 @@ But the result seems not quite positive...
 
 ## Compare the total energy during the steps
 Is the severe energy variance due to close "head-on" collision?
+
+# Runge Kutta with Adaptive step size
+Boost [odeint library](https://www.boost.org/doc/libs/1_83_0/libs/numeric/odeint/doc/html/index.html)
+provides handy ODE initial value problem solvers. We can
+use its adaptive step size algorithms to better control the error.
