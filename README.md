@@ -106,7 +106,37 @@ But the result seems not quite positive...
 ## Compare the total energy during the steps
 Is the severe energy variance due to close "head-on" collision?
 
-# Runge Kutta with Adaptive step size
+# Runge-Kutta with Adaptive step size
 Boost [odeint library](https://www.boost.org/doc/libs/1_83_0/libs/numeric/odeint/doc/html/index.html)
 provides handy ODE initial value problem solvers. We can
 use its adaptive step size algorithms to better control the error.
+
+See the test003(), test004() and test005() in HalleyComet.cpp. 
+Also, the odeint supports Boost multiprecision, which can be a very
+powerful tools.
+
+During the hands on tests, odeint tries to identify the user-defined types are
+containers or not. To tell odeint the user-defined type, such as boost::multiprecision::number<> is not 
+a container type, defines a class like the following:
+
+```c++
+
+// See also https://github.com/victor-tsang/boost_odeint_hands_on/blob/main/README.md
+
+#include<boost/numeric/odeint.hpp>
+#include<boost/multiprecision/cpp_dec_float.hpp>
+#include<boost/multiprecision/mpfr.hpp>
+//#include<boost/multiprecision/gmp.hpp>
+
+// https://stackoverflow.com/questions/58324974/why-does-odeint-fail-with-the-newer-versions-of-odeint
+//
+// The problem seems to be that boost::multiprecision::number,
+// what makes mpf_float_100 (and every other Boost.Multiprecision type) work,
+// has an associated value_type since Boost 1.68 and because of that Boost.Numeric.Odeint
+// treats it as a container when it is not.
+// The way that Odeint checks whether a type is a container is by
+// using a trait: has_value_type, specializing that trait for number should work:
+template< typename Backend, boost::multiprecision::expression_template_option Option >
+struct has_value_type<boost::multiprecision::number<Backend,Option> >:boost::mpl::false_{};
+```
+Make the class `has_value_type< YourType >::value` gives `false`.

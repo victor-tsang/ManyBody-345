@@ -10,6 +10,8 @@
 #include<functional>
 #include<array>
 
+// See also https://github.com/victor-tsang/boost_odeint_hands_on/blob/main/README.md
+
 #include<boost/numeric/odeint.hpp>
 #include<boost/multiprecision/cpp_dec_float.hpp>
 #include<boost/multiprecision/mpfr.hpp>
@@ -564,14 +566,20 @@ namespace {
       dxdt[2]=GM_r3*x[0];
       dxdt[3]=GM_r3*x[1];
     };
-    auto write_out = [] (const state_type &x, const time_type t)
+
+    size_t points{0};
+
+    auto write_out = [&points] (const state_type &x, const time_type t)
     {
       std::cout<<t<<": "<<x[0]<<", "<<x[1]<<", "<<x[2]<<", "<<x[3]<<std::endl;
+      ++points;
     };
     int x_direction = 0; // +ve = increasing, -ve = decreasing
     int y_direction = 1;
     value_type last_x=x[0], last_y=x[1];
-    auto check_turning = [&x_direction, &y_direction, &last_x, &last_y] (const state_type &x, const time_type t){
+    auto check_turning = [&x_direction, &y_direction, &last_x, &last_y,&points] (const state_type &x, const time_type t){
+      ++points;
+
       if(t==0)
         return;
 
@@ -635,10 +643,12 @@ namespace {
       y_direction = 1;
       last_x=x[0];
       last_y=x[1];
+      points=0;
 
       std::cout<<"start at 0, the comet is at ("<<x[0]<<", "<<x[1]<<"); dt = "<<delta<<std::endl;
       controlled_stepper_type controlled_stepper;
       boost::numeric::odeint::integrate_adaptive( controlled_stepper, halley_comet , x , time_from , time_to , delta , check_turning );
+      std::cout<<"  There are "<<points<<" points."<<std::endl;
       std::cout<<std::endl;
     }
 
@@ -649,12 +659,14 @@ namespace {
       y_direction = 1;
       last_x=x[0];
       last_y=x[1];
+      points=0;
 
       std::cout<<"start at 0, the comet is at ("<<x[0]<<", "<<x[1]<<"); dt = "<<delta<<std::endl;
       //controlled_stepper_type controlled_stepper
       value_type abs_err={1e-25};
       value_type rel_err={1e-22};
       boost::numeric::odeint::integrate_adaptive( boost::numeric::odeint::make_controlled(abs_err,rel_err,error_stepper_type()), halley_comet , x , time_from , time_to , delta , check_turning );
+      std::cout<<"  There are "<<points<<" points."<<std::endl;
       std::cout<<std::endl;
     }
     std::cout<<"halley_comet::(anonymous)::test005: done."<<std::endl;
